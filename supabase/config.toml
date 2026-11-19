@@ -1,0 +1,9 @@
+# Configuração mínima para o Supabase CLI (supabase link / supabase db push).
+project_id = "revenda-champion"
+
+[api]
+schemas = ["public"]
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/confirmar"]

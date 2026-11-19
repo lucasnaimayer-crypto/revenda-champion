@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.env
+.env*.local
+*.tsbuildinfo
+.DS_Store
+# catálogos reais ficam fora do git
+fixtures-privados/
