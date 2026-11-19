@@ -49,7 +49,7 @@ export interface PaginaLida {
 }
 
 const PRECO = /^R\$\s*(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})$/;
-const CODIGO = /^[A-Z0-9][A-Z0-9.\-/]{3,23}$/;
+export const CODIGO = /^[A-Z0-9][A-Z0-9.\-/]{3,23}$/;
 
 function limpar(s: string): string {
   return s.replace(/\s+/g, " ").trim();

@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.11.0",
     "@revenda/catalogo": "workspace:*",
     "@revenda/regras": "workspace:*",
     "@supabase/ssr": "^0.12.7",
