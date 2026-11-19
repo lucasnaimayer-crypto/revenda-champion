@@ -51,7 +51,8 @@ pnpm --filter @revenda/catalogo ler /pasta/catalogo.pdf
    - `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase → Project Settings → API).
    - Opcional, para ler fotos e prints com IA: `ANTHROPIC_API_KEY` (console.anthropic.com) e
      `ANTHROPIC_MODEL` (o modelo da Claude a usar). Sem a chave, o app funciona normalmente e só
-     aceita catálogos em PDF.
+     aceita catálogos em PDF. `IA_LIMITE_DIARIO` limita as leituras de cada revendedor a cada
+     24 horas (padrão 100), porque o custo fica na conta da chave.
 4. **Deploy**. Ao terminar, anote o endereço (por exemplo `https://revenda-champion.vercel.app`).
 5. No Supabase, em Authentication → URL Configuration:
    - **Site URL**: o endereço da Vercel.

@@ -1,5 +1,6 @@
 import NovoCatalogo from "@/componentes/catalogo/NovoCatalogo";
 import { Titulo } from "@/componentes/ui";
+import { iaDisponivel } from "@/lib/ia";
 import { exigirDono } from "@/lib/sessao";
 
 export default async function NovoCatalogoPagina() {
@@ -7,7 +8,7 @@ export default async function NovoCatalogoPagina() {
   return (
     <>
       <Titulo>Novo catálogo</Titulo>
-      <NovoCatalogo revendedorId={revendedor.id} />
+      <NovoCatalogo revendedorId={revendedor.id} iaDisponivel={iaDisponivel()} />
     </>
   );
 }
