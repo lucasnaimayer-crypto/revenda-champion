@@ -1,9 +1,24 @@
 @import "tailwindcss";
 
+/* Identidade visual da Champion (championrelogios.com.br): preto quase puro, branco, cinzas claros,
+   azul de destaque em botões, preços e links, Open Sans e cantos levemente arredondados. */
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--fonte-open-sans), "Open Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+@theme {
+  --color-marca: #1a3797;
+  --color-marca-escura: #132a75;
+  --color-marca-clara: #e8ecf8;
+  --color-tinta: #171717;
+  --color-fundo: #f7f7f7;
 }
 
 body {
   font-family: var(--font-sans);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-marca);
 }

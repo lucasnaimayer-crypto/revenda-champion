@@ -35,7 +35,7 @@ export default function FormCliente({ cliente }: { cliente?: ClienteForm }) {
           rows={2}
           maxLength={1000}
           defaultValue={cliente?.observacao ?? ""}
-          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-marca"
         />
       </label>
       {estado.erro && <Aviso>{estado.erro}</Aviso>}

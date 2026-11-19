@@ -37,7 +37,7 @@ export default async function Cliente({ params }: PageProps<"/clientes/[id]">) {
               </a>
             )}
             {dono && (
-              <Link href={`/vendas/nova?cliente=${cliente.id}`} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700">
+              <Link href={`/vendas/nova?cliente=${cliente.id}`} className="rounded-lg bg-marca px-4 py-2 text-sm font-medium text-white hover:bg-marca-escura">
                 Nova venda
               </Link>
             )}

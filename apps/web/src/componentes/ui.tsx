@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
 export const classeCampo =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 disabled:bg-zinc-100";
+  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-marca focus:ring-2 focus:ring-marca/15 disabled:bg-zinc-100";
 
 export function Campo({ rotulo, dica, ...props }: InputHTMLAttributes<HTMLInputElement> & { rotulo: string; dica?: string }) {
   return (
@@ -34,7 +34,7 @@ export function Botao({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: "primario" | "secundario" | "perigo" }) {
   const estilos = {
-    primario: "bg-zinc-900 text-white hover:bg-zinc-700",
+    primario: "bg-marca text-white hover:bg-marca-escura",
     secundario: "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50",
     perigo: "border border-red-200 bg-white text-red-700 hover:bg-red-50",
   }[variante];

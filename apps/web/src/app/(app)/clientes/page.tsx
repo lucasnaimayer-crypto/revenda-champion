@@ -48,7 +48,7 @@ export default async function Clientes({ searchParams }: PageProps<"/clientes">)
     <>
       <Titulo
         acao={
-          <Link href="/clientes?novo=1" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700">
+          <Link href="/clientes?novo=1" className="rounded-lg bg-marca px-4 py-2 text-sm font-medium text-white hover:bg-marca-escura">
             Novo cliente
           </Link>
         }
