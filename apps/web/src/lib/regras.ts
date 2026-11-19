@@ -49,3 +49,12 @@ export async function carregarRegras(supabase: Cliente, revendedorId: string): P
     })),
   };
 }
+
+/** Regras no formato do cálculo de item de pedido: só as comissões ligadas por padrão entram. */
+export function paraCalculo(r: RegrasDoRevendedor) {
+  return {
+    regra: r.regra,
+    custos: r.custos,
+    comissoes: r.comissoes.filter((c) => c.ligadaPorPadrao).map((c) => ({ nome: c.nome, percentualBp: c.percentualBp })),
+  };
+}

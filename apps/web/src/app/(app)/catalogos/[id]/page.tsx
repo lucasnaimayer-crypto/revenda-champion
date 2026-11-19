@@ -5,6 +5,7 @@ import { Botao, Cartao, Titulo, classeCampo } from "@/componentes/ui";
 import { carregarRegras } from "@/lib/regras";
 import { exigirDono } from "@/lib/sessao";
 import { excluirCatalogo } from "./acoes";
+import { criarPedidoDoCatalogo } from "../../pedidos/acoes";
 
 export default async function Catalogo({ params, searchParams }: PageProps<"/catalogos/[id]">) {
   const { id } = await params;
@@ -40,12 +41,18 @@ export default async function Catalogo({ params, searchParams }: PageProps<"/cat
     <>
       <Titulo
         acao={
-          <form action={excluirCatalogo}>
-            <input type="hidden" name="id" value={catalogo.id} />
-            <Botao variante="perigo" type="submit">
-              Excluir catálogo
-            </Botao>
-          </form>
+          <div className="flex gap-2">
+            <form action={criarPedidoDoCatalogo}>
+              <input type="hidden" name="catalogo_id" value={catalogo.id} />
+              <Botao type="submit">Montar pedido</Botao>
+            </form>
+            <form action={excluirCatalogo}>
+              <input type="hidden" name="id" value={catalogo.id} />
+              <Botao variante="perigo" type="submit">
+                Excluir catálogo
+              </Botao>
+            </form>
+          </div>
         }
       >
         {catalogo.nome}
@@ -68,8 +75,7 @@ export default async function Catalogo({ params, searchParams }: PageProps<"/cat
         )}
       </form>
       <p className="mb-3 text-sm text-zinc-500">
-        Preço de venda e lucro pelas suas <Link href="/configuracoes" className="underline">regras</Link>. A montagem do pedido a partir
-        deste catálogo chega na próxima etapa.
+        Preço de venda e lucro pelas suas <Link href="/configuracoes" className="underline">regras</Link>. Para pedir, toque em &quot;Montar pedido&quot;.
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {linhas.map((p) => {
