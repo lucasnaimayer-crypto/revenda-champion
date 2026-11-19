@@ -1,14 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { lerAmbienteSupabase } from "@/lib/supabase/ambiente";
 
 const PUBLICAS = ["/entrar", "/auth"];
 
 // Renova a sessão do Supabase a cada requisição e manda para /entrar quem não está logado.
 // A autorização de verdade fica no banco (RLS); aqui é só o redirecionamento.
 export async function proxy(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const chave = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !chave) return NextResponse.next();
+  const ambiente = lerAmbienteSupabase();
+  if (!ambiente) return NextResponse.next();
+  const { url, chave } = ambiente;
 
   let resposta = NextResponse.next({ request });
   const supabase = createServerClient(url, chave, {

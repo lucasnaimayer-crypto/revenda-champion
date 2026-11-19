@@ -6,8 +6,10 @@ import { ambienteSupabase } from "./ambiente";
 // Cliente do Supabase para Server Components, Server Actions e Route Handlers.
 // Usa a sessão do usuário (cookies), então toda consulta passa pelas regras de acesso do banco.
 export async function supabaseServidor() {
-  const { url, chave } = ambienteSupabase();
+  // Lê os cookies antes de tudo: isso marca a página como dinâmica, então o build não tenta
+  // pré-renderizá-la (nem exige as variáveis do Supabase durante o build).
   const loja = await cookies();
+  const { url, chave } = ambienteSupabase();
   return createServerClient(url, chave, {
     cookies: {
       getAll: () => loja.getAll(),
