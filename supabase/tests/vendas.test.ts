@@ -226,3 +226,13 @@ describe("recebimentos, devolução e cancelamento", () => {
     await expect(b.como(BRUNO, "select public.cancelar_venda($1, 'x', false)", [(await vendaAPrazo())])).rejects.toThrow(/não encontrada/);
   });
 });
+
+describe("giro do estoque", () => {
+  it("mostra saldo e última venda só do próprio revendedor", async () => {
+    const giro = await b.como<{ produto_id: string; saldo: number; ultima_venda: string | null }>(ANA, "select produto_id, saldo, ultima_venda from public.estoque_giro where produto_id = $1", [p1]);
+    expect(giro).toHaveLength(1);
+    expect(giro[0].saldo).toBe(await saldo(p1));
+    expect(giro[0].ultima_venda).not.toBeNull();
+    expect(await b.como(BRUNO, "select * from public.estoque_giro where revendedor_id = $1", [revAna])).toEqual([]);
+  });
+});
