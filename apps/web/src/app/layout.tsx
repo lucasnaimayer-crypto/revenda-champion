@@ -1,10 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Revenda Champion",
   description: "Gestão para revendedores Champion: catálogos, pedidos, estoque e vendas.",
+  appleWebApp: { capable: true, title: "Revenda", statusBarStyle: "default" },
 };
+
+export const viewport: Viewport = { themeColor: "#18181b" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

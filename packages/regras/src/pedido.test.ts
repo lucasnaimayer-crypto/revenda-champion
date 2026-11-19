@@ -49,3 +49,15 @@ describe("planilhaPedidoCsv", () => {
     expect(csv).toContain("'=HYPERLINK(1)");
   });
 });
+
+describe("tabelaCsv", () => {
+  it("separa por ponto e vírgula, escapa e neutraliza fórmulas", async () => {
+    const { tabelaCsv, reaisCsv } = await import("./pedido");
+    const csv = tabelaCsv([
+      ["Nome", "Valor"],
+      ["=HYPERLINK(1)", reaisCsv(12345)],
+      ['Ana "A"; B', null],
+    ]);
+    expect(csv).toBe('﻿Nome;Valor\r\n\'=HYPERLINK(1);123,45\r\n"Ana ""A""; B";\r\n');
+  });
+});

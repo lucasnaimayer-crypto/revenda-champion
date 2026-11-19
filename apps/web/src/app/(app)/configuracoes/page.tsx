@@ -1,3 +1,4 @@
+import Abas from "@/componentes/configuracoes/Abas";
 import FormRegras from "@/componentes/regras/FormRegras";
 import { Titulo } from "@/componentes/ui";
 import { carregarRegras } from "@/lib/regras";
@@ -9,7 +10,8 @@ export default async function Configuracoes() {
   const regras = await carregarRegras(supabase, revendedor.id);
   return (
     <>
-      <Titulo>Regras de preço e custos</Titulo>
+      <Titulo>Configurações</Titulo>
+      <Abas atual="/configuracoes" />
       <FormRegras inicial={paraFormulario(regras)} />
     </>
   );
