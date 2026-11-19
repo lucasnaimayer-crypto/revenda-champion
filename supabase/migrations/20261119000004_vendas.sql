@@ -550,6 +550,5 @@ grant execute on function public.devolver_venda(uuid, jsonb, text, date, boolean
 
 -- Movimentos de estoque lançados direto (ajustes e o recebimento de pedido): só o dono.
 -- Antes qualquer membro podia lançar; a equipe passa a só consultar.
-drop policy estoque_insercao on public.estoque_movimento;
-create policy estoque_insercao on public.estoque_movimento for insert to authenticated
+alter policy estoque_insercao on public.estoque_movimento
   with check ((select privado.eh_dono(revendedor_id)) and criado_por = (select auth.uid()));
