@@ -1,11 +1,14 @@
-import { calcularPeca, formatarReais } from "@revenda/regras";
+import Link from "next/link";
+import { formatarReais } from "@revenda/regras";
+import { FormNovoProduto } from "@/componentes/estoque/FormsEstoque";
 import { Cartao, Titulo, Botao, classeCampo } from "@/componentes/ui";
 import { urlsAssinadas } from "@/lib/arquivos";
+import { carregarAjustes, precificar } from "@/lib/produtos";
 import { carregarRegras } from "@/lib/regras";
 import { exigirRevendedor } from "@/lib/sessao";
 
 export default async function Estoque({ searchParams }: PageProps<"/estoque">) {
-  const { q } = await searchParams;
+  const { q, novo } = await searchParams;
   const busca = typeof q === "string" ? q.trim().toUpperCase().replace(/[%_]/g, "") : "";
   const { supabase, revendedor, papel } = await exigirRevendedor();
   const dono = papel === "dono";
@@ -18,13 +21,13 @@ export default async function Estoque({ searchParams }: PageProps<"/estoque">) {
   ]);
   if (error) throw new Error(error.message);
   // A equipe não lê as regras de preço; para ela o preço só aparece quando foi definido à mão.
-  const regras = dono ? await carregarRegras(supabase, revendedor.id) : null;
+  const [regras, ajustes] = dono ? await Promise.all([carregarRegras(supabase, revendedor.id), carregarAjustes(supabase, revendedor.id)]) : [null, null];
   const saldo = new Map((saldos ?? []).map((s) => [s.produto_id, s.saldo]));
   const urls = await urlsAssinadas(supabase, produtos.map((p) => p.imagem_path));
 
   const linhas = produtos.map((p) => {
-    const calc = regras ? calcularPeca({ custo: p.custo, regra: regras.regra, custos: regras.custos, precoManual: p.preco_manual }) : null;
-    return { ...p, saldo: saldo.get(p.id) ?? 0, venda: calc?.precoVenda ?? p.preco_manual ?? null, custoTotal: calc?.custoTotal ?? null };
+    const calc = regras ? precificar(p, regras, ajustes?.get(p.id)) : null;
+    return { ...p, saldo: saldo.get(p.id) ?? 0, venda: calc?.precoVenda ?? p.preco_manual ?? null, custoTotal: calc?.custoUnitario ?? null };
   });
   const pecas = linhas.reduce((s, l) => s + Math.max(0, l.saldo), 0);
   const valorCusto = linhas.reduce((s, l) => s + Math.max(0, l.saldo) * (l.custoTotal ?? 0), 0);
@@ -32,7 +35,24 @@ export default async function Estoque({ searchParams }: PageProps<"/estoque">) {
 
   return (
     <>
-      <Titulo>Estoque</Titulo>
+      <Titulo
+        acao={
+          dono && (
+            <Link href="/estoque?novo=1" className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-50">
+              Adicionar produto
+            </Link>
+          )
+        }
+      >
+        Estoque
+      </Titulo>
+      {dono && novo === "1" && (
+        <Cartao className="mb-6">
+          <h2 className="mb-1 font-semibold">Adicionar produto</h2>
+          <p className="mb-3 text-sm text-zinc-500">Para peças que não vieram de um pedido no sistema, como o estoque que você já tinha.</p>
+          <FormNovoProduto />
+        </Cartao>
+      )}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Cartao>
           <p className="text-sm text-zinc-500">Peças em estoque</p>
@@ -84,7 +104,9 @@ export default async function Estoque({ searchParams }: PageProps<"/estoque">) {
                           {url && <img src={url} alt="" className="h-full w-full object-contain" />}
                         </div>
                         <div>
-                          <p className="font-mono">{l.codigo}</p>
+                          <Link href={`/estoque/${l.id}`} className="font-mono hover:underline">
+                            {l.codigo}
+                          </Link>
                           {l.descricao && <p className="text-xs text-zinc-500">{l.descricao}</p>}
                         </div>
                       </div>
