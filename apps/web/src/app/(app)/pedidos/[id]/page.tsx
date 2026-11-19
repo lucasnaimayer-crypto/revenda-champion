@@ -8,14 +8,14 @@ import { Botao, Cartao, Titulo } from "@/componentes/ui";
 import { urlsAssinadas } from "@/lib/arquivos";
 import { carregarRegras, paraCalculo } from "@/lib/regras";
 import { exigirDono } from "@/lib/sessao";
-import { excluirPedido } from "../acoes";
+import { excluirPedido, removerItem } from "../acoes";
 
 export default async function Pedido({ params }: PageProps<"/pedidos/[id]">) {
   const { id } = await params;
   const { supabase, revendedor } = await exigirDono();
   const { data: pedido } = await supabase
     .from("pedido")
-    .select("id, numero, nome, status, catalogo_id, criado_em, enviado_em, confirmado_em, recebido_em")
+    .select("id, numero, nome, status, criado_em, enviado_em, confirmado_em, recebido_em")
     .eq("id", id)
     .maybeSingle();
   if (!pedido) notFound();
@@ -34,44 +34,94 @@ export default async function Pedido({ params }: PageProps<"/pedidos/[id]">) {
   );
 
   if (pedido.status === "rascunho") {
-    if (!pedido.catalogo_id) {
-      return (
-        <>
-          <Titulo>{titulo}</Titulo>
-          <Cartao>
-            <p className="text-sm text-zinc-500">O catálogo deste pedido foi excluído. Exclua o rascunho e monte outro.</p>
-          </Cartao>
-        </>
-      );
-    }
-    const [{ data: pecas }, regras] = await Promise.all([
-      supabase.from("catalogo_peca").select("id, codigo, custo, pagina, posicao, imagem_path").eq("catalogo_id", pedido.catalogo_id).order("pagina").order("posicao"),
+    const [{ data: origem }, regras] = await Promise.all([
+      supabase
+        .from("pedido_item")
+        .select("id, catalogo_peca_id, catalogo_peca (pagina, custo, catalogo (nome))")
+        .eq("pedido_id", id),
       carregarRegras(supabase, revendedor.id),
     ]);
-    const urls = await urlsAssinadas(supabase, (pecas ?? []).map((p) => p.imagem_path));
+    const porItem = new Map((origem ?? []).map((o) => [o.id, o.catalogo_peca as unknown as { pagina: number; custo: number; catalogo: { nome: string } | null } | null]));
+    const urls = await urlsAssinadas(supabase, itens.map((i) => i.imagem_path));
+    const ligados = itens.filter((i) => i.catalogo_peca_id && porItem.get(i.id));
+    const soltos = itens.filter((i) => !i.catalogo_peca_id || !porItem.get(i.id));
     const quantidades: Record<string, number> = {};
-    for (const i of itens) if (i.catalogo_peca_id) quantidades[i.catalogo_peca_id] = i.quantidade;
+    for (const i of ligados) quantidades[i.catalogo_peca_id!] = i.quantidade;
+    const outros = {
+      pecas: soltos.reduce((s, i) => s + i.quantidade, 0),
+      custoPeca: soltos.reduce((s, i) => s + i.custo * i.quantidade, 0),
+      venda: soltos.reduce((s, i) => s + i.preco_venda * i.quantidade, 0),
+      lucro: soltos.reduce((s, i) => s + i.lucro * i.quantidade, 0),
+    };
     return (
       <>
         <Titulo
           acao={
-            <form action={excluirPedido}>
-              <input type="hidden" name="pedido_id" value={pedido.id} />
-              <Botao variante="perigo" type="submit">
-                Excluir rascunho
-              </Botao>
-            </form>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/catalogos?pedido=${pedido.id}`} className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-50">
+                Adicionar peças de um catálogo
+              </Link>
+              <form action={excluirPedido}>
+                <input type="hidden" name="pedido_id" value={pedido.id} />
+                <Botao variante="perigo" type="submit">
+                  Excluir rascunho
+                </Botao>
+              </form>
+            </div>
           }
         >
           {titulo}
         </Titulo>
-        <p className="mb-4 text-sm text-zinc-500">Toque nas peças que você quer e ajuste a quantidade. Tudo é salvo na hora.</p>
-        <MontarPedido
-          pedidoId={pedido.id}
-          pecas={(pecas ?? []).map((p) => ({ id: p.id, codigo: p.codigo, custo: p.custo, pagina: p.pagina, url: p.imagem_path ? urls.get(p.imagem_path) ?? null : null }))}
-          quantidadesIniciais={quantidades}
-          regras={paraCalculo(regras)}
-        />
+        {itens.length === 0 ? (
+          <Cartao>
+            <p className="text-sm text-zinc-500">
+              Nenhuma peça ainda. <Link href={`/catalogos?pedido=${pedido.id}`} className="text-marca underline">Abra um catálogo</Link> e toque nas peças que você quer.
+            </p>
+          </Cartao>
+        ) : (
+          <p className="mb-4 text-sm text-zinc-500">Confira as peças e as quantidades. Para tirar uma peça, toque na foto ou deixe a quantidade em zero.</p>
+        )}
+        {soltos.length > 0 && (
+          <Cartao className="mb-4">
+            <p className="mb-2 text-sm text-zinc-500">Peças de catálogos que foram excluídos:</p>
+            <ul className="divide-y divide-zinc-100 text-sm">
+              {soltos.map((i) => (
+                <li key={i.id} className="flex items-center justify-between py-2">
+                  <span>
+                    <span className="font-mono">{i.codigo}</span> · {i.quantidade} × {formatarReais(i.custo)}
+                  </span>
+                  <form action={removerItem}>
+                    <input type="hidden" name="item_id" value={i.id} />
+                    <input type="hidden" name="pedido_id" value={pedido.id} />
+                    <button type="submit" className="text-red-700 hover:underline">
+                      Tirar
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </Cartao>
+        )}
+        {(ligados.length > 0 || soltos.length > 0) && (
+          <MontarPedido
+            modo="pedido"
+            pedidoId={pedido.id}
+            pecas={ligados.map((i) => {
+              const peca = porItem.get(i.id)!;
+              return {
+                id: i.catalogo_peca_id!,
+                codigo: i.codigo,
+                custo: peca.custo,
+                pagina: peca.pagina,
+                catalogo: peca.catalogo?.nome,
+                url: i.imagem_path ? urls.get(i.imagem_path) ?? null : null,
+              };
+            })}
+            quantidadesIniciais={quantidades}
+            outros={outros}
+            regras={paraCalculo(regras)}
+          />
+        )}
       </>
     );
   }

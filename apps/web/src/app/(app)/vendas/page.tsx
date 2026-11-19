@@ -55,7 +55,7 @@ export default async function Vendas({ searchParams }: PageProps<"/vendas">) {
             <Link href="/vendas/receber" className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-50">
               A receber
             </Link>
-            <Link href="/vendas/nova" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700">
+            <Link href="/vendas/nova" className="rounded-lg bg-marca px-4 py-2 text-sm font-medium text-white hover:bg-marca-escura">
               Nova venda
             </Link>
           </div>

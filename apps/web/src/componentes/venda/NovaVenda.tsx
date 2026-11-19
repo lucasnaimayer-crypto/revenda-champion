@@ -142,12 +142,12 @@ export default function NovaVenda({ produtos, clientes, comissoes, hoje, cliente
                   type="button"
                   onClick={() => mudar(p.id, q + 1)}
                   disabled={q >= p.saldo}
-                  className={`rounded-xl border bg-white p-2 text-left transition disabled:opacity-60 ${q > 0 ? "border-zinc-900 ring-1 ring-zinc-900" : "border-zinc-200 hover:border-zinc-400"}`}
+                  className={`rounded-xl border bg-white p-2 text-left transition disabled:opacity-60 ${q > 0 ? "border-marca ring-1 ring-marca" : "border-zinc-200 hover:border-zinc-400"}`}
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-zinc-100">
                     {/* eslint-disable-next-line @next/next/no-img-element -- URL assinada e temporária do Storage */}
                     {p.url ? <img src={p.url} alt={p.codigo} loading="lazy" className="h-full w-full object-contain" /> : <span className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">sem foto</span>}
-                    {q > 0 && <span className="absolute right-1.5 top-1.5 rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white">{q}</span>}
+                    {q > 0 && <span className="absolute right-1.5 top-1.5 rounded-full bg-marca px-2 py-0.5 text-xs font-semibold text-white">{q}</span>}
                   </div>
                   <p className="mt-2 px-1 font-mono text-sm">{p.codigo}</p>
                   <p className="flex justify-between px-1 text-xs text-zinc-500">

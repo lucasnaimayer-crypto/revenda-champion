@@ -16,8 +16,8 @@ export default async function Pedidos() {
     <>
       <Titulo
         acao={
-          <Link href="/catalogos" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700">
-            Novo pedido a partir de um catálogo
+          <Link href="/catalogos" className="rounded-lg bg-marca px-4 py-2 text-sm font-medium text-white hover:bg-marca-escura">
+            Montar pedido
           </Link>
         }
       >
@@ -25,7 +25,7 @@ export default async function Pedidos() {
       </Titulo>
       {data.length === 0 ? (
         <Cartao>
-          <p className="text-sm text-zinc-500">Nenhum pedido ainda. Abra um catálogo e toque em &quot;Montar pedido&quot;.</p>
+          <p className="text-sm text-zinc-500">Nenhum pedido ainda. Abra um catálogo e toque nas peças que você quer; dá para juntar peças de vários catálogos no mesmo pedido.</p>
         </Cartao>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">

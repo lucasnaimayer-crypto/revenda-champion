@@ -23,7 +23,7 @@ export default function Navegacao({ dono }: { dono: boolean }) {
           <Link
             key={i.href}
             href={i.href}
-            className={`whitespace-nowrap rounded-lg px-3 py-1.5 ${ativo ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"}`}
+            className={`whitespace-nowrap border-b-2 px-3 py-2 font-medium ${ativo ? "border-white text-white" : "border-transparent text-white/60 hover:text-white"}`}
           >
             {i.rotulo}
           </Link>

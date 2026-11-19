@@ -194,7 +194,7 @@ export default function NovoCatalogo({ revendedorId, iaDisponivel }: { revendedo
       }
       const fim = await supabase.from("catalogo").update({ status: "pronto", total_pecas: linhas.length }).eq("id", catalogo.id);
       if (fim.error) throw new Error(fim.error.message);
-      router.push(`/catalogos/${catalogo.id}`);
+      router.push(`/catalogos?salvo=${catalogo.id}`);
       router.refresh();
     } catch (e) {
       await supabase.from("catalogo").update({ status: "erro" }).eq("id", catalogo.id);
@@ -218,7 +218,7 @@ export default function NovoCatalogo({ revendedorId, iaDisponivel }: { revendedo
             ler(Array.from(e.dataTransfer.files ?? []));
           }}
           className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-16 text-center transition ${
-            sobre ? "border-zinc-900 bg-zinc-50" : "border-zinc-300"
+            sobre ? "border-marca bg-marca/5" : "border-zinc-300"
           }`}
         >
           {etapa === "lendo" ? (

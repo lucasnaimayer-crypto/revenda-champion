@@ -126,7 +126,7 @@ export default async function Painel({ searchParams }: PageProps<"/painel">) {
     <>
       <Titulo
         acao={
-          <Link href="/vendas/nova" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700">
+          <Link href="/vendas/nova" className="rounded-lg bg-marca px-4 py-2 text-sm font-medium text-white hover:bg-marca-escura">
             Nova venda
           </Link>
         }
@@ -138,7 +138,7 @@ export default async function Painel({ searchParams }: PageProps<"/painel">) {
         <Cartao className="mb-6">
           <h2 className="font-semibold">Comece pelo catálogo do representante</h2>
           <p className="mt-1 text-sm text-zinc-500">Envie o PDF e o sistema separa cada relógio com foto, código e preço. Depois é só montar o pedido.</p>
-          <Link href="/catalogos/novo" className="mt-4 inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">
+          <Link href="/catalogos/novo" className="mt-4 inline-block rounded-lg bg-marca px-4 py-2 text-sm font-medium text-white hover:bg-marca-escura">
             Subir catálogo
           </Link>
         </Cartao>

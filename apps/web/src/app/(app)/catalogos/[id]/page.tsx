@@ -1,128 +1,84 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { calcularPeca, formatarReais, resumir } from "@revenda/regras";
-import { Botao, Cartao, Titulo, classeCampo } from "@/componentes/ui";
-import { carregarRegras } from "@/lib/regras";
+import EscolherPedido from "@/componentes/pedido/EscolherPedido";
+import MontarPedido, { type OutrosItens } from "@/componentes/pedido/MontarPedido";
+import { urlsAssinadas } from "@/lib/arquivos";
+import { carregarRascunhos, escolherRascunho } from "@/lib/rascunhos";
+import { carregarRegras, paraCalculo } from "@/lib/regras";
 import { exigirDono } from "@/lib/sessao";
 import { excluirCatalogo } from "./acoes";
-import { criarPedidoDoCatalogo } from "../../pedidos/acoes";
 
+// O catálogo é a vitrine para montar o pedido: todas as peças começam fora e o revendedor toca
+// nas que quer. As peças vão para um rascunho que pode juntar vários catálogos (e, no futuro,
+// o catálogo único da Champion, que é só mais um catálogo com origem "champion").
 export default async function Catalogo({ params, searchParams }: PageProps<"/catalogos/[id]">) {
   const { id } = await params;
-  const { q } = await searchParams;
-  const busca = typeof q === "string" ? q.trim().toUpperCase() : "";
+  const { pedido: escolhido } = await searchParams;
   const { supabase, revendedor } = await exigirDono();
 
-  const { data: catalogo } = await supabase.from("catalogo").select("id, nome, status, total_pecas, total_paginas").eq("id", id).maybeSingle();
+  const { data: catalogo } = await supabase.from("catalogo").select("id, nome, total_pecas").eq("id", id).maybeSingle();
   if (!catalogo) notFound();
 
-  let consulta = supabase
-    .from("catalogo_peca")
-    .select("id, pagina, posicao, codigo, custo, imagem_path, origem_leitura")
-    .eq("catalogo_id", id)
-    .order("pagina")
-    .order("posicao");
-  if (busca) consulta = consulta.ilike("codigo", `%${busca.replace(/[%_]/g, "")}%`);
-  const [{ data: pecas, error }, regras] = await Promise.all([consulta, carregarRegras(supabase, revendedor.id)]);
+  const [{ data: pecas, error }, regras, rascunhos] = await Promise.all([
+    supabase.from("catalogo_peca").select("id, pagina, posicao, codigo, custo, imagem_path").eq("catalogo_id", id).order("pagina").order("posicao"),
+    carregarRegras(supabase, revendedor.id),
+    carregarRascunhos(supabase, revendedor.id),
+  ]);
   if (error) throw new Error(error.message);
+  const rascunho = escolherRascunho(rascunhos, escolhido);
 
-  const caminhos = pecas.map((p) => p.imagem_path).filter((p): p is string => Boolean(p));
-  const urls = new Map<string, string>();
-  for (let i = 0; i < caminhos.length; i += 500) {
-    const { data } = await supabase.storage.from("catalogos").createSignedUrls(caminhos.slice(i, i + 500), 3600);
-    for (const u of data ?? []) if (u.path && u.signedUrl) urls.set(u.path, u.signedUrl);
+  const quantidades: Record<string, number> = {};
+  const outros: OutrosItens = { pecas: 0, custoPeca: 0, venda: 0, lucro: 0 };
+  if (rascunho) {
+    const daqui = new Set(pecas.map((p) => p.id));
+    const { data: itens } = await supabase.from("pedido_item").select("catalogo_peca_id, quantidade, custo, preco_venda, lucro").eq("pedido_id", rascunho.id);
+    for (const i of itens ?? []) {
+      if (i.catalogo_peca_id && daqui.has(i.catalogo_peca_id)) {
+        quantidades[i.catalogo_peca_id] = i.quantidade;
+      } else {
+        outros.pecas += i.quantidade;
+        outros.custoPeca += i.custo * i.quantidade;
+        outros.venda += i.preco_venda * i.quantidade;
+        outros.lucro += i.lucro * i.quantidade;
+      }
+    }
   }
-
-  const comissoesPadrao = regras.comissoes.filter((c) => c.ligadaPorPadrao);
-  const linhas = pecas.map((p) => ({ ...p, calc: calcularPeca({ custo: p.custo, regra: regras.regra, custos: regras.custos, comissoes: comissoesPadrao }) }));
-  const total = resumir(linhas.map((l) => l.calc));
+  const urls = await urlsAssinadas(supabase, pecas.map((p) => p.imagem_path));
 
   return (
     <>
-      <Titulo
-        acao={
-          <div className="flex gap-2">
-            <form action={criarPedidoDoCatalogo}>
-              <input type="hidden" name="catalogo_id" value={catalogo.id} />
-              <Botao type="submit">Montar pedido</Botao>
-            </form>
-            <form action={excluirCatalogo}>
-              <input type="hidden" name="id" value={catalogo.id} />
-              <Botao variante="perigo" type="submit">
-                Excluir catálogo
-              </Botao>
-            </form>
-          </div>
-        }
-      >
-        {catalogo.nome}
-      </Titulo>
-      <div className="mb-6 grid gap-4 sm:grid-cols-4">
-        <Indicador rotulo="Peças" valor={catalogo.total_pecas.toLocaleString("pt-BR")} />
-        <Indicador rotulo="Custo médio" valor={formatarReais(total.pecas ? Math.round(total.custoPeca / total.pecas) : 0)} />
-        <Indicador rotulo="Venda média" valor={formatarReais(total.pecas ? Math.round(total.venda / total.pecas) : 0)} />
-        <Indicador rotulo="Margem média" valor={`${(total.margemBp / 100).toFixed(1)}%`} />
-      </div>
-      <form className="mb-4 flex gap-2">
-        <input name="q" defaultValue={busca} placeholder="Buscar código" className={`${classeCampo} max-w-xs`} />
-        <Botao variante="secundario" type="submit">
-          Buscar
-        </Botao>
-        {busca && (
-          <Link href={`/catalogos/${id}`} className="self-center text-sm text-zinc-500 hover:underline">
-            limpar
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Link href="/catalogos" className="text-sm text-zinc-500 hover:underline">
+            ← Catálogos
           </Link>
-        )}
-      </form>
-      <p className="mb-3 text-sm text-zinc-500">
-        Preço de venda e lucro pelas suas <Link href="/configuracoes" className="underline">regras</Link>. Para pedir, toque em &quot;Montar pedido&quot;.
-      </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {linhas.map((p) => {
-          const url = p.imagem_path ? urls.get(p.imagem_path) : undefined;
-          return (
-            <div key={p.id} className="rounded-xl border border-zinc-200 bg-white p-2">
-              <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-zinc-100">
-                {url ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- URL assinada e temporária do Storage
-                  <img src={url} alt={p.codigo} loading="lazy" className="h-full w-full object-contain" />
-                ) : (
-                  <span className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">sem foto</span>
-                )}
-              </div>
-              <p className="mt-2 px-1 font-mono text-sm">{p.codigo}</p>
-              <dl className="space-y-0.5 px-1 text-xs">
-                <div className="flex justify-between text-zinc-500">
-                  <dt>Custo</dt>
-                  <dd>{formatarReais(p.calc.custoTotal)}</dd>
-                </div>
-                <div className="flex justify-between font-medium">
-                  <dt>Venda</dt>
-                  <dd>{formatarReais(p.calc.precoVenda)}</dd>
-                </div>
-                <div className="flex justify-between text-emerald-700">
-                  <dt>Lucro</dt>
-                  <dd>{formatarReais(p.calc.lucro)}</dd>
-                </div>
-              </dl>
-            </div>
-          );
-        })}
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{catalogo.nome}</h1>
+          <form action={excluirCatalogo} className="flex flex-wrap items-center gap-x-2 text-sm text-zinc-500">
+            <span>{catalogo.total_pecas.toLocaleString("pt-BR")} peças · toque nas que você quer pedir</span>
+            <input type="hidden" name="id" value={catalogo.id} />
+            <span aria-hidden>·</span>
+            <button type="submit" className="text-red-700 hover:underline">
+              Excluir catálogo
+            </button>
+          </form>
+        </div>
+        <EscolherPedido rascunhos={rascunhos} atual={rascunho?.id ?? null} />
       </div>
-      {linhas.length === 0 && (
-        <Cartao>
-          <p className="text-sm text-zinc-500">Nenhuma peça encontrada.</p>
-        </Cartao>
+      {outros.pecas > 0 && (
+        <p className="mb-4 text-sm text-zinc-500">
+          Este pedido já tem {outros.pecas} {outros.pecas === 1 ? "peça" : "peças"} de outros catálogos; o total abaixo inclui todas.
+        </p>
       )}
+      <MontarPedido
+        key={rascunho?.id ?? "novo"}
+        modo="catalogo"
+        pedidoId={rascunho?.id ?? null}
+        catalogoId={catalogo.id}
+        pecas={pecas.map((p) => ({ id: p.id, codigo: p.codigo, custo: p.custo, pagina: p.pagina, url: p.imagem_path ? urls.get(p.imagem_path) ?? null : null }))}
+        quantidadesIniciais={quantidades}
+        outros={outros}
+        regras={paraCalculo(regras)}
+      />
     </>
-  );
-}
-
-function Indicador({ rotulo, valor }: { rotulo: string; valor: string }) {
-  return (
-    <Cartao>
-      <p className="text-sm text-zinc-500">{rotulo}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums">{valor}</p>
-    </Cartao>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatarReais, resumir, calcularPeca, type RegrasCalculo } from "@revenda/regras";
-import { definirQuantidade, mudarStatus } from "@/app/(app)/pedidos/acoes";
+import { criarRascunho, definirQuantidade, mudarStatus } from "@/app/(app)/pedidos/acoes";
 import { Aviso, Botao, classeCampo } from "@/componentes/ui";
 
 export interface PecaDoCatalogo {
@@ -12,19 +13,36 @@ export interface PecaDoCatalogo {
   custo: number;
   pagina: number;
   url: string | null;
+  /** Nome do catálogo, mostrado quando o pedido junta vários. */
+  catalogo?: string;
+}
+
+/** Peças do mesmo pedido que vieram de outros catálogos (para o total do rodapé). */
+export interface OutrosItens {
+  pecas: number;
+  custoPeca: number;
+  venda: number;
+  lucro: number;
 }
 
 interface Props {
-  pedidoId: string;
+  /** null: o rascunho só é criado quando a primeira peça for escolhida. */
+  pedidoId: string | null;
+  /** "catalogo": escolher peças de um catálogo; "pedido": revisar o rascunho e fechar. */
+  modo: "catalogo" | "pedido";
+  catalogoId?: string;
   pecas: PecaDoCatalogo[];
   quantidadesIniciais: Record<string, number>;
+  outros?: OutrosItens;
   regras: RegrasCalculo;
 }
 
 const ESPERA_MS = 400;
 
-export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, regras }: Props) {
+export default function MontarPedido({ pedidoId: pedidoInicial, modo, catalogoId, pecas, quantidadesIniciais, outros, regras }: Props) {
   const router = useRouter();
+  const [pedidoId, setPedidoId] = useState(pedidoInicial);
+  const criacao = useRef<Promise<string | null> | null>(null);
   const [quantidades, setQuantidades] = useState<Record<string, number>>(quantidadesIniciais);
   const [filtro, setFiltro] = useState<"todas" | "selecionadas">("todas");
   const [busca, setBusca] = useState("");
@@ -34,9 +52,27 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
   const pendentes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const gravacoes = useRef(new Set<Promise<unknown>>());
 
+  // Garante um rascunho antes da primeira gravação; toques seguidos esperam a mesma criação.
+  const obterPedido = useCallback((): Promise<string | null> => {
+    if (pedidoId) return Promise.resolve(pedidoId);
+    criacao.current ??= criarRascunho(catalogoId ?? null).then((r) => {
+      if (!r.id) {
+        setErro(r.erro ?? "Não foi possível criar o pedido.");
+        criacao.current = null;
+        return null;
+      }
+      setPedidoId(r.id);
+      router.refresh();
+      return r.id;
+    });
+    return criacao.current;
+  }, [pedidoId, catalogoId, router]);
+
   const gravar = useCallback(
     (pecaId: string, quantidade: number) => {
-      const p = definirQuantidade(pedidoId, pecaId, quantidade).then((r) => {
+      const p = obterPedido().then(async (id) => {
+        if (!id) return;
+        const r = await definirQuantidade(id, pecaId, quantidade);
         if (r.erro) setErro(r.erro);
       });
       gravacoes.current.add(p);
@@ -46,7 +82,7 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
         setSalvando((n) => n - 1);
       });
     },
-    [pedidoId]
+    [obterPedido]
   );
 
   const mudar = useCallback(
@@ -90,7 +126,7 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
     return m;
   }, [pecas, regras]);
 
-  const total = useMemo(
+  const daqui = useMemo(
     () =>
       resumir(
         pecas
@@ -99,6 +135,12 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
       ),
     [pecas, quantidades, regras]
   );
+  const total = {
+    pecas: daqui.pecas + (outros?.pecas ?? 0),
+    custoPeca: daqui.custoPeca + (outros?.custoPeca ?? 0),
+    venda: daqui.venda + (outros?.venda ?? 0),
+    lucro: daqui.lucro + (outros?.lucro ?? 0),
+  };
 
   const termo = busca.trim().toUpperCase();
   const visiveis = pecas.filter((p) => (filtro === "todas" || (quantidades[p.id] ?? 0) > 0) && (!termo || p.codigo.includes(termo)));
@@ -107,6 +149,7 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
     setErro(null);
     iniciarEnvio(async () => {
       await descarregar();
+      if (!pedidoId) return;
       const r = await mudarStatus(pedidoId, "enviado");
       if (r.erro) setErro(r.erro);
       else router.refresh();
@@ -116,7 +159,7 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
   return (
     <div className="pb-28">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex rounded-lg bg-zinc-100 p-1 text-sm">
+        {modo === "catalogo" && <div className="flex rounded-lg bg-zinc-100 p-1 text-sm">
           {(["todas", "selecionadas"] as const).map((f) => (
             <button
               key={f}
@@ -127,7 +170,7 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
               {f === "todas" ? `Todas (${pecas.length})` : `No pedido (${Object.values(quantidades).filter((q) => q > 0).length})`}
             </button>
           ))}
-        </div>
+        </div>}
         <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar código" className={`${classeCampo} max-w-48`} />
         <span className="text-xs text-zinc-400">{salvando > 0 ? "salvando…" : "salvo"}</span>
       </div>
@@ -142,19 +185,32 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
           const q = quantidades[p.id] ?? 0;
           const c = calculos.get(p.id)!;
           return (
-            <div key={p.id} className={`rounded-xl border bg-white p-2 transition ${q > 0 ? "border-zinc-900 ring-1 ring-zinc-900" : "border-zinc-200"}`}>
-              <button type="button" onClick={() => mudar(p.id, q > 0 ? q : 1)} className="relative block aspect-[3/4] w-full overflow-hidden rounded-lg bg-zinc-100">
+            <div key={p.id} className={`rounded-xl border bg-white p-2 transition ${q > 0 ? "border-marca ring-1 ring-marca" : "border-zinc-200"}`}>
+              <button
+                type="button"
+                aria-pressed={q > 0}
+                aria-label={q > 0 ? `${p.codigo} no pedido` : `Adicionar ${p.codigo} ao pedido`}
+                onClick={() => mudar(p.id, q > 0 ? 0 : 1)}
+                className="relative block aspect-[3/4] w-full overflow-hidden rounded-lg bg-zinc-100"
+              >
                 {p.url ? (
                   // eslint-disable-next-line @next/next/no-img-element -- URL assinada e temporária do Storage
                   <img src={p.url} alt={p.codigo} loading="lazy" className="h-full w-full object-contain" />
                 ) : (
                   <span className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">sem foto</span>
                 )}
-                {q > 0 && <span className="absolute right-1.5 top-1.5 rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white">{q}</span>}
+                <span
+                  className={`absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-semibold ${
+                    q > 0 ? "bg-marca text-white" : "border border-zinc-300 bg-white/90 text-zinc-500"
+                  }`}
+                >
+                  {q > 0 ? `✓ ${q}` : "+"}
+                </span>
               </button>
               <div className="mt-2 flex items-start justify-between gap-1 px-1">
                 <div>
                   <p className="font-mono text-sm">{p.codigo}</p>
+                  {p.catalogo && <p className="truncate text-[11px] text-zinc-400">{p.catalogo}</p>}
                   <p className="text-xs text-zinc-500">
                     {formatarReais(p.custo)} → <span className="text-zinc-900">{formatarReais(c.precoVenda)}</span>
                   </p>
@@ -182,24 +238,40 @@ export default function MontarPedido({ pedidoId, pecas, quantidadesIniciais, reg
 
       <div className="fixed inset-x-0 bottom-0 border-t border-zinc-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+          <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
             <Total rotulo="Peças" valor={total.pecas.toLocaleString("pt-BR")} />
             <Total rotulo="Custo do pedido" valor={formatarReais(total.custoPeca)} />
-            <Total rotulo="Venda prevista" valor={formatarReais(total.venda)} />
+            <Total rotulo="Venda prevista" valor={formatarReais(total.venda)} className="hidden sm:block" />
             <Total rotulo="Lucro previsto" valor={formatarReais(total.lucro)} destaque />
           </dl>
-          <Botao type="button" onClick={enviar} disabled={enviando || total.pecas === 0}>
-            {enviando ? "Fechando…" : "Fechar pedido"}
-          </Botao>
+          {modo === "pedido" ? (
+            <Botao type="button" onClick={enviar} disabled={enviando || total.pecas === 0}>
+              {enviando ? "Fechando…" : "Fechar pedido"}
+            </Botao>
+          ) : pedidoId && total.pecas > 0 ? (
+            <Link
+              href={`/pedidos/${pedidoId}`}
+              onClick={(e) => {
+                if (pendentes.current.size === 0 && gravacoes.current.size === 0) return;
+                e.preventDefault();
+                descarregar().then(() => router.push(`/pedidos/${pedidoId}`));
+              }}
+              className="rounded-lg bg-marca px-4 py-2 text-sm font-medium text-white hover:bg-marca-escura"
+            >
+              Ver pedido e fechar
+            </Link>
+          ) : (
+            <span className="text-sm text-zinc-500">Toque nas peças para colocar no pedido.</span>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function Total({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
+function Total({ rotulo, valor, destaque, className = "" }: { rotulo: string; valor: string; destaque?: boolean; className?: string }) {
   return (
-    <div>
+    <div className={className}>
       <dt className="text-xs text-zinc-500">{rotulo}</dt>
       <dd className={`font-semibold tabular-nums ${destaque ? "text-emerald-700" : ""}`}>{valor}</dd>
     </div>

@@ -19,18 +19,33 @@ function mensagem(erro: { message: string } | null | undefined): string | undefi
   return erro.message;
 }
 
-export async function criarPedidoDoCatalogo(form: FormData) {
-  const catalogoId = uuid.parse(form.get("catalogo_id"));
+/**
+ * Cria um pedido em rascunho. Ele junta peças de quantos catálogos o revendedor quiser;
+ * o catálogo de origem fica só como referência de onde o pedido começou.
+ */
+export async function criarRascunho(catalogoId: string | null): Promise<Resultado & { id?: string }> {
+  const dados = uuid.nullable().safeParse(catalogoId);
+  if (!dados.success) return { erro: "Catálogo inválido." };
   const { supabase, revendedor } = await exigirDono();
-  const { data: catalogo } = await supabase.from("catalogo").select("id, nome").eq("id", catalogoId).maybeSingle();
-  if (!catalogo) throw new Error("Catálogo não encontrado.");
+  const nome = `Pedido de ${new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`;
   const { data: pedido, error } = await supabase
     .from("pedido")
-    .insert({ revendedor_id: revendedor.id, catalogo_id: catalogo.id, nome: catalogo.nome })
+    .insert({ revendedor_id: revendedor.id, catalogo_id: dados.data, nome })
     .select("id")
     .single();
-  if (error || !pedido) throw new Error(error?.message ?? "Não foi possível criar o pedido.");
-  redirect(`/pedidos/${pedido.id}`);
+  if (error || !pedido) return { erro: error?.message ?? "Não foi possível criar o pedido." };
+  revalidatePath("/pedidos");
+  return { id: pedido.id };
+}
+
+/** Tira do rascunho um item cuja peça de catálogo não existe mais. */
+export async function removerItem(form: FormData) {
+  const itemId = uuid.parse(form.get("item_id"));
+  const pedidoId = uuid.parse(form.get("pedido_id"));
+  const { supabase } = await exigirDono();
+  const { error } = await supabase.from("pedido_item").delete().eq("id", itemId).eq("pedido_id", pedidoId);
+  if (error) throw new Error(mensagem(error));
+  revalidatePath(`/pedidos/${pedidoId}`);
 }
 
 /** Define a quantidade de uma peça do catálogo no pedido (0 tira a peça). */
