@@ -4,6 +4,14 @@ const SITUACOES: Record<string, { rotulo: string; cor: string }> = {
   confirmado: { rotulo: "Confirmado", cor: "bg-sky-100 text-sky-800" },
   recebido: { rotulo: "Recebido", cor: "bg-emerald-100 text-emerald-800" },
   cancelado: { rotulo: "Cancelado", cor: "bg-red-100 text-red-700" },
+  // Vendas
+  concluida: { rotulo: "Concluída", cor: "bg-emerald-100 text-emerald-800" },
+  parcialmente_devolvida: { rotulo: "Devolução parcial", cor: "bg-amber-100 text-amber-800" },
+  devolvida: { rotulo: "Devolvida", cor: "bg-zinc-200 text-zinc-700" },
+  cancelada: { rotulo: "Cancelada", cor: "bg-red-100 text-red-700" },
+  // Parcelas
+  pendente: { rotulo: "A receber", cor: "bg-amber-100 text-amber-800" },
+  atrasado: { rotulo: "Atrasada", cor: "bg-red-100 text-red-700" },
 };
 
 export default function Situacao({ status }: { status: string }) {
