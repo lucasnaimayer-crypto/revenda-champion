@@ -15,9 +15,9 @@ const credenciais = z.object({
   senha: z.string().min(8, "A senha precisa ter pelo menos 8 caracteres."),
 });
 
-function destinoSeguro(voltar: FormDataEntryValue | null): string {
+function destinoSeguro(voltar: FormDataEntryValue | null, padrao = "/painel"): string {
   const v = typeof voltar === "string" ? voltar : "";
-  return v.startsWith("/") && !v.startsWith("//") ? v : "/painel";
+  return v.startsWith("/") && !v.startsWith("//") ? v : padrao;
 }
 
 export async function entrar(_: EstadoEntrar, form: FormData): Promise<EstadoEntrar> {
@@ -37,10 +37,11 @@ export async function cadastrar(_: EstadoEntrar, form: FormData): Promise<Estado
   const { data, error } = await supabase.auth.signUp({
     email: dados.data.email,
     password: dados.data.senha,
-    options: { emailRedirectTo: `${origem}/auth/confirmar?voltar=/cadastro` },
+    // Quem veio de um convite volta para ele depois de confirmar o e-mail.
+    options: { emailRedirectTo: `${origem}/auth/confirmar?voltar=${encodeURIComponent(destinoSeguro(form.get("voltar"), "/cadastro"))}` },
   });
   if (error) return { erro: error.message };
-  if (data.session) redirect("/cadastro");
+  if (data.session) redirect(destinoSeguro(form.get("voltar"), "/cadastro"));
   return { mensagem: "Enviamos um link de confirmação para o seu e-mail. Abra o link para continuar." };
 }
 

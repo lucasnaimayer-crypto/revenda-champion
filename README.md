@@ -42,3 +42,23 @@ Os catálogos não ficam no repositório. Para conferir o leitor com PDFs reais:
 CATALOGOS_DIR=/pasta/com/os/pdfs pnpm --filter @revenda/catalogo test
 pnpm --filter @revenda/catalogo ler /pasta/catalogo.pdf
 ```
+
+## Publicar na Vercel
+
+1. Em vercel.com, **Add New → Project** e importe o repositório `revenda-champion`.
+2. Em **Root Directory**, escolha `apps/web`. A Vercel detecta Next.js e pnpm sozinha.
+3. Em **Environment Variables**, adicione:
+   - `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase → Project Settings → API).
+   - Opcional, para ler fotos e prints com IA: `ANTHROPIC_API_KEY` (console.anthropic.com) e
+     `ANTHROPIC_MODEL` (o modelo da Claude a usar). Sem a chave, o app funciona normalmente e só
+     aceita catálogos em PDF.
+4. **Deploy**. Ao terminar, anote o endereço (por exemplo `https://revenda-champion.vercel.app`).
+5. No Supabase, em Authentication → URL Configuration:
+   - **Site URL**: o endereço da Vercel.
+   - **Redirect URLs**: `https://<endereço>/auth/confirmar` e, para as prévias de cada PR,
+     `https://*-<sua-conta>.vercel.app/auth/confirmar`.
+
+Cada push na `main` publica de novo; cada PR ganha um endereço de prévia.
+
+No celular, abra o endereço no navegador e use "Adicionar à tela de início": o app abre em tela
+cheia, direto no painel.

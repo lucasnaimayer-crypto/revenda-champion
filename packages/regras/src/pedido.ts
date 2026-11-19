@@ -44,7 +44,7 @@ function reais(centavos: number): string {
   return (centavos / 100).toFixed(2).replace(".", ",");
 }
 
-function celula(valor: string): string {
+export function celulaCsv(valor: string): string {
   // Evita que o Excel interprete o texto como fórmula e escapa aspas e separadores.
   const seguro = /^[=+\-@]/.test(valor) ? `'${valor}` : valor;
   return /[";\n\r]/.test(seguro) ? `"${seguro.replace(/"/g, '""')}"` : seguro;
@@ -68,5 +68,15 @@ export function planilhaPedidoCsv(itens: LinhaPlanilha[], cabecalho: string[] = 
     linhas.push([i.codigo, i.descricao ?? "", String(i.quantidade), reais(i.custo), reais(i.custo * i.quantidade)]);
   }
   linhas.push(["Total", "", String(pecas), "", reais(total)]);
-  return "﻿" + linhas.map((l) => l.map((v) => celula(v)).join(";")).join("\r\n") + "\r\n";
+  return "﻿" + linhas.map((l) => l.map((v) => celulaCsv(v)).join(";")).join("\r\n") + "\r\n";
+}
+
+/** Tabela em CSV no mesmo formato da planilha do pedido (ponto e vírgula, BOM, sem fórmulas). */
+export function tabelaCsv(linhas: (string | number | null | undefined)[][]): string {
+  return "\uFEFF" + linhas.map((l) => l.map((v) => celulaCsv(v == null ? "" : String(v))).join(";")).join("\r\n") + "\r\n";
+}
+
+/** Centavos em texto para planilha: 12345 → "123,45". */
+export function reaisCsv(centavos: number | null | undefined): string {
+  return ((centavos ?? 0) / 100).toFixed(2).replace(".", ",");
 }
